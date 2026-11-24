@@ -9,6 +9,32 @@ def read_text(value):
     return sys.stdin.read() if value == "-" else value
 
 
+def format_brute(text, results, highlight=None):
+    """Met en forme le résultat de la force brute sous forme de petit tableau."""
+    text = text.strip().replace("\n", " ")
+    rows = {k: c.replace("\n", " ") for k, c in results.items()}
+    keys = list(rows)
+    width = max([len("texte déchiffré")] + [len(c) for c in rows.values()])
+    separator = f"{'-' * 3}-+-{'-' * width}"
+
+    lines = [
+        "=== CryptoBox | César : force brute ===",
+        f"Texte chiffré : {text}",
+        f"Clés testées  : {len(rows)} (k = {keys[0]} à {keys[-1]})",
+        "",
+        f"{'k':>3} | texte déchiffré",
+        separator,
+    ]
+    for k, candidate in rows.items():
+        mark = ""
+        if highlight and highlight.upper() in candidate:
+            mark = "  <-- correspondance"
+        lines.append(f"{k:>3} | {candidate}{mark}")
+    lines.append(separator)
+    lines.append(f"Terminé : {len(rows)} clés testées.")
+    return "\n".join(lines)
+
+
 def add_cipher(methods, name, module, help_text, key_help, key_type=str):
     """Ajoute la méthode `name` avec ses actions encrypt et decrypt."""
     method = methods.add_parser(name, help=help_text)
@@ -33,6 +59,11 @@ def build_parser():
     )
     brute = caesar_actions.add_parser("brute", help="teste les 25 clés")
     brute.add_argument("text", help="le message, ou '-' pour lire l'entrée standard")
+    brute.add_argument(
+        "--contains",
+        metavar="MOT",
+        help="repère les clés dont le résultat contient ce mot",
+    )
 
     add_cipher(
         methods,
@@ -56,8 +87,8 @@ def main(argv=None):
     try:
         text = read_text(args.text)
         if args.action == "brute":
-            for k, candidate in caesar.brute_force(text).items():
-                print(f"k={k:2d} : {candidate}")
+            results = caesar.brute_force(text)
+            print(format_brute(text, results, args.contains))
         else:
             print(args.func(text, args.key))
     except ValueError as error:
